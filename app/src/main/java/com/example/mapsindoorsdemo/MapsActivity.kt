@@ -2,6 +2,7 @@ package com.example.mapsindoorsdemo
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -10,11 +11,18 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.example.mapsindoorsdemo.databinding.ActivityMapsBinding
+import com.mapsindoors.coresdk.MapControl
+import com.mapsindoors.coresdk.MapsIndoors
+import com.mapsindoors.googlemapssdk.MPMapConfig
+import com.mapsindoors.googlemapssdk.converters.LatLngBoundsConverter
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
+    private lateinit var mapView: View
+    private lateinit var mMapControl: MapControl
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,6 +34,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+        MapsIndoors.load(applicationContext, getString(R.string.maps_indoors_key), null)
+
+        mapFragment.view?.let{
+            mapView = it
+        }
     }
 
     /**
@@ -40,9 +54,33 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
+        fun initMapControl(view: View){
+            var mapConfig = MPMapConfig.Builder(this, mMap, getString(R.string.google_maps_key), view, true).build()
+
+            // New instance of MapControl
+            MapControl.create(mapConfig) {mapControl, miError ->
+                if (miError == null){
+                    mMapControl = mapControl!!
+
+                    val venue = MapsIndoors.getVenues()?.currentVenue
+                    venue?.bounds?.let{
+                        runOnUiThread {
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(LatLngBoundsConverter.toLatLngBounds(it), 19))
+                        }
+                    }
+                }
+            }
+        }
+
+        mapView?.let { view ->
+            initMapControl(view)
+        }
+
+
+
         // Add a marker in Sydney and move the camera
-        val sydney = LatLng(-34.0, 151.0)
-        mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
+//        val sydney = LatLng(-34.0, 151.0)
+//        mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
+//        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
     }
 }
